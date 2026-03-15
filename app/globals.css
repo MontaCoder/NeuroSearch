@@ -1,0 +1,333 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --font-lexend: 'Lexend', system-ui, sans-serif;
+  }
+
+  html {
+    @apply scroll-smooth;
+  }
+
+  body {
+    @apply bg-background-primary text-text-primary font-sans antialiased;
+    margin: 0px !important;
+    font-feature-settings: 'rlig' 1, 'calt' 1;
+    background-image:
+      /* Fine texture layer */
+      radial-gradient(circle at 1px 1px, rgba(23, 23, 23, 0.12) 1px, transparent 0),
+      /* Medium texture layer */
+      radial-gradient(circle at 21px 21px, rgba(23, 23, 23, 0.06) 1px, transparent 0),
+      /* Large texture layer */
+      radial-gradient(circle at 41px 41px, rgba(23, 23, 23, 0.03) 1px, transparent 0),
+      /* Subtle noise overlay */
+      radial-gradient(circle at 50% 50%, transparent 20%, rgba(23, 23, 23, 0.02) 21%, rgba(23, 23, 23, 0.02) 22%, transparent 23%);
+    background-size: 20px 20px, 40px 40px, 60px 60px, 120px 120px;
+    background-position: 0 0, 10px 10px, 20px 20px, 0 0;
+  }
+
+  /* Focus styles for accessibility */
+  :focus-visible {
+    @apply outline-none ring-2 ring-interactive-focus ring-offset-2 ring-offset-background-primary;
+  }
+
+  /* Reduced motion preferences */
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+      scroll-behavior: auto !important;
+    }
+  }
+
+  /* Typography hierarchy */
+  h1, h2, h3, h4, h5, h6 {
+    @apply font-semibold tracking-tight text-text-primary;
+    line-height: 1.2;
+  }
+
+  h1 {
+    @apply text-4xl md:text-5xl lg:text-6xl;
+    font-weight: 600;
+  }
+
+  h2 {
+    @apply text-3xl md:text-4xl lg:text-5xl;
+  }
+
+  h3 {
+    @apply text-2xl md:text-3xl;
+  }
+
+  h4 {
+    @apply text-xl md:text-2xl;
+  }
+
+  h5 {
+    @apply text-lg md:text-xl;
+  }
+
+  h6 {
+    @apply text-base md:text-lg;
+  }
+
+  p {
+    @apply text-text-secondary leading-relaxed;
+    margin-bottom: 1rem;
+  }
+
+  /* Links */
+  a {
+    @apply text-text-primary transition-colors duration-200 hover:text-text-secondary focus:text-text-secondary;
+    text-decoration: none;
+  }
+
+  a:hover {
+    text-decoration: underline;
+  }
+
+  /* Lists */
+  ul, ol {
+    @apply text-text-secondary leading-relaxed;
+    margin-bottom: 1rem;
+    padding-left: 1.5rem;
+  }
+
+  ul {
+    list-style-type: disc;
+  }
+
+  ol {
+    list-style-type: decimal;
+  }
+
+  li {
+    margin-bottom: 0.25rem;
+  }
+
+  /* Code blocks */
+  code {
+    @apply bg-background-secondary px-1.5 py-0.5 rounded text-sm font-mono text-text-primary;
+    font-size: 0.875em;
+  }
+
+  pre {
+    @apply bg-background-secondary p-4 rounded-lg overflow-x-auto my-4 border border-border-light;
+  }
+
+  pre code {
+    @apply bg-transparent p-0;
+  }
+
+  /* Form elements */
+  input, textarea, select {
+    @apply bg-background-primary border border-border-medium rounded-md px-3 py-2 text-text-primary placeholder-text-tertiary focus:outline-none focus:ring-2 focus:ring-interactive-focus focus:border-transparent transition-colors duration-200;
+  }
+
+  button {
+    @apply font-medium transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-interactive-focus focus:ring-offset-2 focus:ring-offset-background-primary;
+  }
+
+  /* Tables */
+  table {
+    @apply w-full border-collapse border border-border-light;
+  }
+
+  th, td {
+    @apply border border-border-light px-4 py-2 text-left;
+  }
+
+  th {
+    @apply bg-background-secondary font-semibold text-text-primary;
+  }
+
+  td {
+    @apply text-text-secondary;
+  }
+}
+
+@layer components {
+  /* Button styles */
+  .btn {
+    @apply inline-flex items-center justify-center rounded-lg px-4 py-2 font-medium transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-interactive-focus focus:ring-offset-2 focus:ring-offset-background-primary disabled:opacity-50 disabled:pointer-events-none;
+  }
+
+  .btn-primary {
+    @apply btn bg-text-primary text-background-primary hover:bg-text-secondary hover:shadow-md active:scale-95;
+  }
+
+  .btn-secondary {
+    @apply btn bg-background-secondary text-text-primary border border-border-medium hover:bg-background-tertiary hover:border-border-dark active:scale-95;
+  }
+
+  .btn-ghost {
+    @apply btn text-text-primary hover:bg-background-secondary active:scale-95;
+  }
+
+  /* Card styles */
+  .card {
+    @apply bg-background-primary rounded-lg border border-border-light shadow-sm hover:shadow-md transition-shadow duration-200;
+  }
+
+  .card-elevated {
+    @apply bg-background-primary rounded-lg border border-border-light shadow-lg hover:shadow-xl transition-shadow duration-200;
+  }
+
+  /* Input styles */
+  .input {
+    @apply bg-background-primary border border-border-medium rounded-lg px-4 py-3 text-text-primary placeholder-text-tertiary focus:outline-none focus:ring-2 focus:ring-interactive-focus focus:border-transparent transition-all duration-200;
+  }
+
+  /* Badge styles */
+  .badge {
+    @apply inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium;
+  }
+
+  .badge-secondary {
+    @apply badge bg-background-secondary text-text-secondary border border-border-light;
+  }
+
+  /* Loading spinner */
+  .spinner {
+    @apply animate-spin rounded-full border-2 border-interactive-disabled border-t-interactive-focus;
+  }
+
+  /* Tooltip */
+  .tooltip {
+    @apply relative inline-block;
+  }
+
+  .tooltip::after {
+    @apply absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-2 py-1 bg-text-primary text-background-primary text-xs rounded opacity-0 pointer-events-none transition-opacity duration-200 whitespace-nowrap z-50;
+    content: attr(data-tooltip);
+  }
+
+  .tooltip:hover::after {
+    @apply opacity-100;
+  }
+
+  /* Modal backdrop */
+  .modal-backdrop {
+    @apply fixed inset-0 bg-black bg-opacity-50 z-40 transition-opacity duration-200;
+  }
+
+  /* Navigation styles */
+  .nav-link {
+    @apply text-text-secondary hover:text-text-primary transition-colors duration-200 relative;
+  }
+
+  .nav-link::after {
+    @apply absolute bottom-0 left-0 w-0 h-0.5 bg-text-primary transition-all duration-200;
+    content: '';
+  }
+
+  .nav-link:hover::after,
+  .nav-link:focus::after {
+    @apply w-full;
+  }
+}
+
+@layer utilities {
+  .text-balance {
+    text-wrap: balance;
+  }
+
+  /* Hide scrollbar for Chrome, Safari and Opera */
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+
+  /* Hide scrollbar for IE, Edge and Firefox */
+  .no-scrollbar {
+    -ms-overflow-style: none; /* IE and Edge */
+    scrollbar-width: none; /* Firefox */
+  }
+
+  /* Glass effect */
+  .glass {
+    @apply bg-background-primary bg-opacity-80 backdrop-blur-sm border border-border-light;
+  }
+
+  /* Enhanced texture for cards */
+  .card-texture {
+    background-image:
+      radial-gradient(circle at 1px 1px, rgba(23, 23, 23, 0.08) 1px, transparent 0),
+      radial-gradient(circle at 31px 31px, rgba(23, 23, 23, 0.04) 1px, transparent 0);
+    background-size: 30px 30px, 60px 60px;
+    background-position: 0 0, 15px 15px;
+  }
+
+  /* Subtle paper texture */
+  .paper-texture {
+    background-image:
+      radial-gradient(circle at 50% 50%, transparent 30%, rgba(23, 23, 23, 0.015) 31%, rgba(23, 23, 23, 0.015) 32%, transparent 33%),
+      linear-gradient(45deg, transparent 40%, rgba(23, 23, 23, 0.01) 41%, rgba(23, 23, 23, 0.01) 42%, transparent 43%);
+    background-size: 80px 80px, 40px 40px;
+  }
+
+  /* Gradient text */
+  .gradient-text {
+    @apply bg-gradient-to-r from-text-primary to-text-secondary bg-clip-text text-transparent;
+  }
+
+  /* Loading animation */
+  .loader {
+    @apply flex gap-1;
+  }
+
+  .loader span {
+    @apply inline-block w-2 h-2 bg-text-primary rounded-full animate-pulse-subtle;
+  }
+
+  .loader span:nth-child(2) {
+    animation-delay: 0.2s;
+  }
+
+  .loader span:nth-child(3) {
+    animation-delay: 0.4s;
+  }
+
+  /* Skeleton loading */
+  .skeleton {
+    @apply bg-background-secondary animate-pulse rounded;
+  }
+
+  /* Text selection */
+  ::selection {
+    @apply bg-interactive-hover text-text-primary;
+  }
+
+  /* Smooth transitions for interactive elements */
+  .interactive {
+    @apply transition-all duration-200 ease-out;
+  }
+
+  .interactive:hover {
+    @apply transform scale-105;
+  }
+
+  .interactive:active {
+    @apply transform scale-95;
+  }
+
+  /* Focus trap for modals */
+  .focus-trap {
+    @apply focus:outline-none focus:ring-2 focus:ring-interactive-focus focus:ring-offset-2;
+  }
+
+  /* High contrast mode support */
+  @media (prefers-contrast: high) {
+    .card {
+      @apply border-border-dark;
+    }
+
+    .btn-secondary {
+      @apply border-border-dark;
+    }
+  }
+}
