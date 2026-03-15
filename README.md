@@ -2,7 +2,7 @@
 
 # NeuroSearch
 
-<img alt="NeuroSearch Logo" src="./public/logo.svg" width="120">
+<img alt="NeuroSearch Logo" src="./public/img/logo.svg" width="120">
 
 **An open-source AI-powered search engine with real-time streaming responses**
 
