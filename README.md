@@ -6,7 +6,8 @@
 
 **An open-source AI-powered search engine with real-time streaming responses**
 
-[![Next.js](https://img.shields.io/badge/Next.js-14-black?logo=next.js&logoColor=white)](https://nextjs.org)
+[![Next.js](https://img.shields.io/badge/Next.js-16-black?logo=next.js&logoColor=white)](https://nextjs.org)
+[![React](https://img.shields.io/badge/React-19-61dafb?logo=react&logoColor=black)](https://react.dev)
 [![Tailwind CSS](https://img.shields.io/badge/Tailwind-3.4-38bdf8?logo=tailwindcss&logoColor=white)](https://tailwindcss.com)
 [![Groq](https://img.shields.io/badge/Groq-AI-FF6B00?logo=data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjQiIGhlaWdodD0iMjQiIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cGF0aCBkPSJNMTIgMkM2LjQ4IDIgMiA2LjQ4IDIgMTJzNC40OCAxMCAxMCAxMCAxMC00LjQ4IDEwLTEwUzE3LjUyIDIgMTIgMnoiIGZpbGw9IiNGRjZCMDAiLz48L3N2Zz4=)](https://groq.com)
 [![License](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
@@ -37,11 +38,14 @@ NeuroSearch is an open-source AI search engine that combines the power of large 
 
 | Category | Technology |
 |----------|------------|
-| **Framework** | Next.js 14 (App Router) |
-| **Styling** | Tailwind CSS |
+| **Framework** | Next.js 16 (App Router, Turbopack) |
+| **UI Library** | React 19 |
+| **Styling** | Tailwind CSS 3.4 |
+| **Language** | TypeScript 5 |
 | **LLM Inference** | Groq AI |
 | **LLM Models** | OpenAI gpt-oss-120b & gpt-oss-20b |
 | **Search API** | Exa.ai |
+| **AI SDK** | Vercel AI SDK 5 |
 | **Observability** | Helicone |
 | **Analytics** | Plausible |
 
