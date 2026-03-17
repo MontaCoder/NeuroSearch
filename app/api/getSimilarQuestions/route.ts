@@ -1,4 +1,4 @@
-import { groqClientAISDK, truncateContextForTokens } from "@/utils/clients";
+import { groqClientAISDK, truncateContextForTokens, withRetry } from "@/utils/clients";
 import { NextResponse } from "next/server";
 import { SearchResults } from "@/utils/sharedTypes";
 import { unstable_cache } from 'next/cache';
@@ -10,22 +10,29 @@ const getCachedSimilarQuestions = unstable_cache(
   async (question: string, sourcesContext: string) => {
     const result = await generateText({
       model: groqClientAISDK("openai/gpt-oss-20b"),
-      system: `
-        You are a helpful assistant that helps the user to ask related questions, based on user's original question and the search results found for that question. Please identify worthwhile topics that can be follow-ups, and write 3 questions no longer than 20 words each. Please make sure that specifics, like events, names, locations, are included in follow up questions so they can be asked standalone. For example, if the original question asks about "the Manhattan project", in the follow up question, do not just say "the project", but use the full name "the Manhattan project". Your related questions must be in the same language as the original question.
+      system: `You are a research assistant that generates insightful follow-up questions.
 
-        Use the search results below to generate more relevant and specific follow-up questions that dive deeper into the topic or explore related aspects mentioned in the sources.
+Guidelines for generating questions:
+- Create 3 diverse questions that explore different aspects of the topic
+- Each question must be standalone (include specific names, events, locations)
+- Use the same language as the original question
+- Max 20 words per question
+- Vary question types: mix "what", "how", "why", "when", "where" questions
+- Focus on aspects NOT fully covered in the original answer
+- Do NOT repeat or rephrase the original question
 
-        Please provide these 3 related questions as a JSON object with a "questions" array containing 3 strings. Do NOT repeat the original question. ONLY return the JSON object, I will get fired if you don't return JSON.`,
+Return ONLY a JSON object: {"questions": ["question1", "question2", "question3"]}`,
       messages: [
         {
           role: "user",
-          content: `Original question: ${question}
+          content: `Original question: "${question}"
 
-${sourcesContext ? `Search results:\n${sourcesContext}` : ''}
+${sourcesContext ? `Context from sources:\n${sourcesContext}` : 'No additional context available.'}
 
-Generate 3 related follow-up questions based on the original question and the search results above.`,
+Generate 3 diverse follow-up questions that explore different angles of this topic.`,
         },
       ],
+
     });
 
     try {
@@ -61,10 +68,12 @@ export async function POST(request: Request) {
     .digest('hex');
 
   try {
-    const questions = await getCachedSimilarQuestions(question, sourcesContext);
+    const questions = await withRetry(async () => {
+      return await getCachedSimilarQuestions(question, sourcesContext);
+    }, 2); // Only 2 retries for similar questions (non-critical)
     return NextResponse.json(questions);
   } catch (error) {
     console.error('Error generating similar questions:', error);
-    return NextResponse.json([]);
+    return NextResponse.json([]); // Return empty array on failure
   }
 }
