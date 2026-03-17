@@ -9,7 +9,7 @@ import { generateText } from 'ai';
 const getCachedSimilarQuestions = unstable_cache(
   async (question: string, sourcesContext: string) => {
     const result = await generateText({
-      model: groqClientAISDK("openai/gpt-oss-20b"),
+      model: groqClientAISDK("qwen/qwen3-32b"),
       system: `You are a research assistant that generates insightful follow-up questions.
 
 Guidelines for generating questions:
