@@ -36,7 +36,9 @@ Generate 3 diverse follow-up questions that explore different angles of this top
     });
 
     try {
-      const parsedResponse = JSON.parse(result.text);
+      // Extract JSON from response (handles <think> tags from Qwen model)
+      const jsonMatch = result.text.match(/\{[\s\S]*\}/);
+      const parsedResponse = JSON.parse(jsonMatch ? jsonMatch[0] : result.text);
       return parsedResponse.questions || [];
     } catch (error) {
       console.error('Error parsing similar questions response:', error);
