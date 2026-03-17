@@ -43,7 +43,7 @@ NeuroSearch is an open-source AI search engine that combines the power of large 
 | **Styling** | Tailwind CSS 3.4 |
 | **Language** | TypeScript 5 |
 | **LLM Inference** | Groq AI |
-| **LLM Models** | OpenAI gpt-oss-120b & gpt-oss-20b |
+| **LLM Models** | OpenAI gpt-oss-120b & Qwen qwen3-32b |
 | **Search API** | Exa.ai |
 | **AI SDK** | Vercel AI SDK 5 |
 | **Observability** | Helicone |
@@ -60,7 +60,7 @@ graph LR
     A --> E
     E --> F[gpt-oss-120b]
     F --> G[Streaming Answer]
-    D --> H[gpt-oss-20b]
+    D --> H[qwen3-32b]
     H --> I[3 Related Questions]
 ```
 
@@ -68,7 +68,7 @@ graph LR
 2. **Process** - Text is extracted from the top 5 sources (optimized for token limits)
 3. **Generate** - Combined context and question are sent to gpt-oss-120b for answer generation
 4. **Stream** - Response is streamed back to the user in real-time
-5. **Suggest** - gpt-oss-20b generates 3 related questions using the top 2 sources
+5. **Suggest** - Qwen qwen3-32b generates 3 related questions using the top 2 sources
 
 ## 🚀 Getting Started
 
