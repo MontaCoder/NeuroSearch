@@ -37,58 +37,67 @@ export default function Home() {
 
   async function handleSourcesAndAnswer(question: string) {
     setIsLoadingSources(true);
-    let sourcesResponse = await fetch("/api/getSources", {
-      method: "POST",
-      body: JSON.stringify({ question }),
-    });
-    let sourcesLocal = [];
-    if (sourcesResponse.ok) {
-      sourcesLocal = await sourcesResponse.json();
-      setSources(sourcesLocal);
-    } else {
-      setSources([]);
-    }
-    setIsLoadingSources(false);
-
-    // Generate similar questions using both question and sources
-    handleSimilarQuestions(question, sourcesLocal);
-
-    const response = await fetch("/api/getAnswer", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({ question, sources: sourcesLocal }),
-    });
-
-    if (!response.ok) {
-      throw new Error(response.statusText);
-    }
-
-    // Handle the streaming response
-    const reader = response.body?.getReader();
-    if (!reader) {
-      throw new Error('No response body');
-    }
-
-    const decoder = new TextDecoder();
-    let done = false;
-    let accumulatedText = '';
-
-    while (!done) {
-      const { value, done: doneReading } = await reader.read();
-      done = doneReading;
-
-      if (done) break;
-
-      // Process each chunk of data
-      const chunk = decoder.decode(value, { stream: true });
-
-      // The Vercel AI SDK streams text directly, so we can append it directly
-      if (chunk) {
-        accumulatedText += chunk;
-        setAnswer(accumulatedText);
+    
+    try {
+      // Fetch sources first (needed for both answer and similar questions)
+      let sourcesResponse = await fetch("/api/getSources", {
+        method: "POST",
+        body: JSON.stringify({ question }),
+      });
+      
+      let sourcesLocal: SearchResults[] = [];
+      if (sourcesResponse.ok) {
+        sourcesLocal = await sourcesResponse.json();
+        setSources(sourcesLocal);
+      } else {
+        setSources([]);
+        console.error('Failed to fetch sources');
       }
+      setIsLoadingSources(false);
+
+      // Start similar questions generation in parallel (doesn't block answer)
+      handleSimilarQuestions(question, sourcesLocal);
+
+      // Fetch answer with sources
+      const response = await fetch("/api/getAnswer", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ question, sources: sourcesLocal }),
+      });
+
+      if (!response.ok) {
+        throw new Error(`Answer generation failed: ${response.statusText}`);
+      }
+
+      // Handle the streaming response
+      const reader = response.body?.getReader();
+      if (!reader) {
+        throw new Error('No response body');
+      }
+
+      const decoder = new TextDecoder();
+      let done = false;
+      let accumulatedText = '';
+
+      while (!done) {
+        const { value, done: doneReading } = await reader.read();
+        done = doneReading;
+
+        if (done) break;
+
+        const chunk = decoder.decode(value, { stream: true });
+        if (chunk) {
+          accumulatedText += chunk;
+          setAnswer(accumulatedText);
+        }
+      }
+    } catch (error) {
+      console.error('Error in handleSourcesAndAnswer:', error);
+      setIsLoadingSources(false);
+      // Show error state to user
+      setAnswer('<p class="text-red-500">Sorry, an error occurred while generating your answer. Please try again.</p>');
     }
   }
 
@@ -157,7 +166,7 @@ export default function Home() {
             <div className="flex-1 py-8">
               <div className="container mx-auto px-4 max-w-4xl space-y-8">
                 <Sources sources={sources} isLoading={isLoadingSources} />
-                <Answer answer={answer} />
+                <Answer answer={answer} sourceCount={sources.length} />
                 <SimilarTopics
                   similarQuestions={similarQuestions}
                   handleDisplayResult={handleDisplayResult}
