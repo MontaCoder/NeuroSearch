@@ -1,12 +1,32 @@
 import { streamText } from 'ai';
 import { SearchResults } from "@/utils/sharedTypes";
-import { groqClientAISDK, buildTruncatedContext } from '@/utils/clients';
+import { groqClientAISDK, buildTruncatedContext, withRetry } from '@/utils/clients';
 
 export const maxDuration = 45;
+
+// System prompt establishes AI role and quality expectations
+const SYSTEM_PROMPT = `You are an expert research assistant with deep knowledge across many domains. Your role is to provide accurate, well-structured answers based on the provided sources.
+
+Guidelines:
+- Answer in the same language as the user's question
+- Be concise but comprehensive
+- Structure your answer with clear sections when appropriate
+- Use inline citations [[citation:x]] to reference sources
+- If information is insufficient, say "Based on available sources, " followed by what you can determine
+- Include the current date context when discussing time-sensitive information
+- Do not repeat information or add unnecessary filler
+- Prioritize accuracy over speed`;  
 
 export async function POST(request: Request) {
   try {
     const { question, sources } = await request.json();
+
+    if (!question || typeof question !== 'string') {
+      return new Response(JSON.stringify({ error: 'Invalid question format' }), {
+        status: 400,
+        headers: { 'Content-Type': 'application/json' },
+      });
+    }
 
     if (!sources || !Array.isArray(sources)) {
       return new Response(JSON.stringify({ error: 'Invalid sources format' }), {
@@ -18,44 +38,63 @@ export async function POST(request: Request) {
     // Limit to 5 sources to stay well under token limits
     const finalResults: SearchResults[] = sources.slice(0, 5);
 
-    const mainAnswerPrompt = `
-    Given a user question and some context, please write a clean, concise and accurate answer to the question based on the context. You will be given a set of related contexts to the question, each starting with a reference number like [[citation:x]], where x is a number. Please use the context when crafting your answer.
+    const answerPrompt = `Based on the provided sources, answer the user's question accurately and concisely.
 
-    Your answer must be correct, accurate and written by an expert using an unbiased and professional tone. Please limit to 1024 tokens. Do not give any information that is not related to the question, and do not repeat. Say "information is missing on" followed by the related topic, if the given context do not provide sufficient information.
+Sources:
+<sources>
+${buildTruncatedContext(finalResults)}
+</sources>
 
-    Here are the set of contexts:
+Instructions:
+- Use inline citations [[citation:x]] to reference specific sources
+- Structure your answer clearly with sections if needed
+- Limit to 1024 tokens
+- If sources don't provide enough information, acknowledge this clearly
+- Return as HTML (no body/head tags, no markdown)
 
-    <contexts>
-    ${buildTruncatedContext(finalResults)}
-    </contexts>
+Current date: ${new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}`;
 
-    Remember, don't blindly repeat the contexts verbatim and don't tell the user how you used the citations – just respond with the answer. It is very important for my career that you follow these instructions. Here is the user question:
+    // Use retry logic for the streaming response
+    const result = await withRetry(async () => {
+      return streamText({
+        model: groqClientAISDK("openai/gpt-oss-120b"),
+        system: SYSTEM_PROMPT,
+        messages: [
+          {
+            role: 'user',
+            content: `${answerPrompt}
 
-    Return the answer as html for the section html, no body or head and not markdown!
-
-    Never output References or citations!
-    `;
-
-    const result = streamText({
-      model: groqClientAISDK("openai/gpt-oss-120b"),
-      system: mainAnswerPrompt,
-      messages: [
-        {
-          role: 'user',
-          content: question,
-        },
-      ],
+Question: ${question}`,
+          },
+        ],
+        temperature: 0.3, // Lower temperature for more factual answers
+      });
     });
 
     return result.toTextStreamResponse();
   } catch (error) {
     console.error('Error in getAnswer:', error);
+    
+    // Provide more specific error messages
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+    
+    if (errorMessage.includes('rate') || errorMessage.includes('429')) {
+      return new Response(
+        JSON.stringify({ error: 'Service is busy. Please try again in a moment.' }),
+        { status: 429, headers: { 'Content-Type': 'application/json' } }
+      );
+    }
+    
+    if (errorMessage.includes('timeout')) {
+      return new Response(
+        JSON.stringify({ error: 'Request timed out. Please try again.' }),
+        { status: 504, headers: { 'Content-Type': 'application/json' } }
+      );
+    }
+    
     return new Response(
-      JSON.stringify({ error: 'An error occurred while processing your request' }),
-      {
-        status: 500,
-        headers: { 'Content-Type': 'application/json' },
-      }
+      JSON.stringify({ error: 'Answer generation failed. Please try again.' }),
+      { status: 500, headers: { 'Content-Type': 'application/json' } }
     );
   }
 }

@@ -1,17 +1,38 @@
 import Image from "next/image";
 import { Toaster, toast } from "react-hot-toast";
+import { useMemo } from "react";
 
 interface AnswerProps {
   answer: string;
+  sourceCount?: number;
 }
 
-export default function Answer({ answer }: AnswerProps) {
+export default function Answer({ answer, sourceCount = 0 }: AnswerProps) {
   // Function to strip HTML tags from the answer
   const stripHtml = (html: string) => {
     const tmp = document.createElement('div');
     tmp.innerHTML = html;
     return tmp.textContent || tmp.innerText || '';
   };
+
+  // Process answer to convert citation markers to clickable links
+  const processedAnswer = useMemo(() => {
+    if (!answer) return '';
+    
+    // Convert [[citation:x]] to clickable links
+    return answer.replace(/\[\[citation:(\d+)\]\]/g, (match, index) => {
+      return `<a href="#source-${index}" class="citation-link inline-flex items-center gap-1 px-1.5 py-0.5 text-xs font-medium text-interactive-primary bg-interactive-primary/10 rounded hover:bg-interactive-primary/20 transition-colors" onclick="event.preventDefault(); document.getElementById('source-${index}')?.scrollIntoView({behavior: 'smooth', block: 'center'});">[${parseInt(index) + 1}]</a>`;
+    });
+  }, [answer]);
+
+  // Count unique citations in the answer
+  const citationCount = useMemo(() => {
+    if (!answer) return 0;
+    const matches = answer.match(/\[\[citation:(\d+)\]\]/g);
+    if (!matches) return 0;
+    const uniqueIndices = new Set(matches.map(m => m.match(/\d+/)?.[0]));
+    return uniqueIndices.size;
+  }, [answer]);
 
   const handleCopy = async () => {
     try {
@@ -83,12 +104,34 @@ export default function Answer({ answer }: AnswerProps) {
 
         <div className="prose prose-gray max-w-none">
           {answer ? (
-            <div
-              className="text-base leading-relaxed text-text-secondary"
-              dangerouslySetInnerHTML={{ __html: answer.trim() }}
-              role="article"
-              aria-label="AI generated answer"
-            />
+            <>
+              <div
+                className="text-base leading-relaxed text-text-secondary"
+                dangerouslySetInnerHTML={{ __html: processedAnswer.trim() }}
+                role="article"
+                aria-label="AI generated answer"
+              />
+              
+              {/* Answer metadata */}
+              <div className="mt-6 pt-4 border-t border-border-light flex items-center gap-4 text-xs text-text-tertiary">
+                {citationCount > 0 && (
+                  <span className="flex items-center gap-1">
+                    <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                    </svg>
+                    {citationCount} source{citationCount !== 1 ? 's' : ''} referenced
+                  </span>
+                )}
+                {sourceCount > 0 && (
+                  <span className="flex items-center gap-1">
+                    <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 12a9 9 0 01-9 9m9-9a9 9 0 00-9-9m9 9H3m9 9a9 9 0 01-9-9m9 9c1.657 0 3-4.03 3-9s-1.343-9-3-9m0 18c-1.657 0-3-4.03-3-9s1.343-9 3-9m-9 9a9 9 0 019-9" />
+                    </svg>
+                    {sourceCount} source{sourceCount !== 1 ? 's' : ''} analyzed
+                  </span>
+                )}
+              </div>
+            </>
           ) : (
             <div className="flex flex-col gap-3" role="status" aria-label="Loading answer">
               <div className="skeleton h-4 w-full" />
