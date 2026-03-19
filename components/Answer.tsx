@@ -15,23 +15,24 @@ export default function Answer({ answer, sourceCount = 0 }: AnswerProps) {
     return tmp.textContent || tmp.innerText || '';
   };
 
-  // Process answer to convert citation markers to clickable links
-  const processedAnswer = useMemo(() => {
-    if (!answer) return '';
+  const { processedAnswer, citationCount } = useMemo(() => {
+    if (!answer) {
+      return {
+        processedAnswer: '',
+        citationCount: 0,
+      };
+    }
     
-    // Convert [[citation:x]] to clickable links
-    return answer.replace(/\[\[citation:(\d+)\]\]/g, (match, index) => {
+    const uniqueIndices = new Set<string>();
+    const processed = answer.replace(/\[\[citation:(\d+)\]\]/g, (_match, index) => {
+      uniqueIndices.add(index);
       return `<a href="#source-${index}" class="citation-link inline-flex items-center gap-1 px-1.5 py-0.5 text-xs font-medium text-interactive-primary bg-interactive-primary/10 rounded hover:bg-interactive-primary/20 transition-colors" onclick="event.preventDefault(); document.getElementById('source-${index}')?.scrollIntoView({behavior: 'smooth', block: 'center'});">[${parseInt(index) + 1}]</a>`;
     });
-  }, [answer]);
 
-  // Count unique citations in the answer
-  const citationCount = useMemo(() => {
-    if (!answer) return 0;
-    const matches = answer.match(/\[\[citation:(\d+)\]\]/g);
-    if (!matches) return 0;
-    const uniqueIndices = new Set(matches.map(m => m.match(/\d+/)?.[0]));
-    return uniqueIndices.size;
+    return {
+      processedAnswer: processed,
+      citationCount: uniqueIndices.size,
+    };
   }, [answer]);
 
   const handleCopy = async () => {
