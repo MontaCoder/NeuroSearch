@@ -3,11 +3,13 @@ import Image from "next/image";
 
 interface SourceCardProps {
   source: SearchResults;
+  index: number;
 }
 
-const SourceCard = ({ source }: SourceCardProps) => {
+const SourceCard = ({ source, index }: SourceCardProps) => {
   return (
     <a
+      id={`source-${index}`}
       target="_blank"
       rel="noopener noreferrer"
       href={source.url}
