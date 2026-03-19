@@ -1,7 +1,8 @@
 import Image from "next/image";
 import Link from "next/link";
+import { memo } from "react";
 
-const Footer = () => {
+function Footer() {
   return (
     <footer className="border-t border-border-light bg-background-primary mt-16">
       <div className="container mx-auto px-4 py-8 lg:px-8 lg:py-12">
@@ -111,6 +112,6 @@ const Footer = () => {
       </div>
     </footer>
   );
-};
+}
 
-export default Footer;
+export default memo(Footer);

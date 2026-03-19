@@ -1,6 +1,7 @@
 import Image from "next/image";
+import { memo } from "react";
 
-const Header = () => {
+function Header() {
   return (
     <header className="container mx-auto px-4 py-4 lg:px-8 lg:py-6">
       <div className="flex h-16 items-center justify-center lg:h-20">
@@ -25,6 +26,6 @@ const Header = () => {
       </div>
     </header>
   );
-};
+}
 
-export default Header;
+export default memo(Header);
