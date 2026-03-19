@@ -8,7 +8,7 @@ import InputArea from "@/components/InputArea";
 import SimilarTopics from "@/components/SimilarTopics";
 import Sources from "@/components/Sources";
 import Image from "next/image";
-import { useRef, useState } from "react";
+import { useCallback, useState } from "react";
 import { SearchResults } from "@/utils/sharedTypes";
 
 export default function Home() {
@@ -20,107 +20,152 @@ export default function Home() {
   const [answer, setAnswer] = useState("");
   const [similarQuestions, setSimilarQuestions] = useState<string[]>([]);
   const [loading, setLoading] = useState(false);
-  const chatContainerRef = useRef<HTMLDivElement>(null);
 
-  const handleDisplayResult = async (newQuestion?: string) => {
-    newQuestion = newQuestion || promptValue;
-
-    setShowResult(true);
-    setLoading(true);
-    setQuestion(newQuestion);
-    setPromptValue("");
-
-    await handleSourcesAndAnswer(newQuestion);
-
-    setLoading(false);
-  };
-
-  async function handleSourcesAndAnswer(question: string) {
-    setIsLoadingSources(true);
-    
-    try {
-      // Fetch sources first (needed for both answer and similar questions)
-      let sourcesResponse = await fetch("/api/getSources", {
-        method: "POST",
-        body: JSON.stringify({ question }),
-      });
-      
-      let sourcesLocal: SearchResults[] = [];
-      if (sourcesResponse.ok) {
-        sourcesLocal = await sourcesResponse.json();
-        setSources(sourcesLocal);
-      } else {
-        setSources([]);
-        console.error('Failed to fetch sources');
+  const handleSimilarQuestions = useCallback(
+    async (question: string, sources: SearchResults[]) => {
+      try {
+        const res = await fetch("/api/getSimilarQuestions", {
+          method: "POST",
+          body: JSON.stringify({ question, sources }),
+        });
+        const questions = await res.json();
+        setSimilarQuestions(questions);
+      } catch (error) {
+        console.error("Error generating similar questions:", error);
+        setSimilarQuestions([]);
       }
-      setIsLoadingSources(false);
+    },
+    [],
+  );
 
-      // Start similar questions generation in parallel (doesn't block answer)
-      handleSimilarQuestions(question, sourcesLocal);
+  const handleSourcesAndAnswer = useCallback(
+    async (question: string) => {
+      setIsLoadingSources(true);
 
-      // Fetch answer with sources
-      const response = await fetch("/api/getAnswer", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ question, sources: sourcesLocal }),
-      });
+      try {
+        // Fetch sources first (needed for both answer and similar questions)
+        const sourcesResponse = await fetch("/api/getSources", {
+          method: "POST",
+          body: JSON.stringify({ question }),
+        });
 
-      if (!response.ok) {
-        throw new Error(`Answer generation failed: ${response.statusText}`);
-      }
-
-      // Handle the streaming response
-      const reader = response.body?.getReader();
-      if (!reader) {
-        throw new Error('No response body');
-      }
-
-      const decoder = new TextDecoder();
-      let done = false;
-      let accumulatedText = '';
-
-      while (!done) {
-        const { value, done: doneReading } = await reader.read();
-        done = doneReading;
-
-        if (done) break;
-
-        const chunk = decoder.decode(value, { stream: true });
-        if (chunk) {
-          accumulatedText += chunk;
-          setAnswer(accumulatedText);
+        let sourcesLocal: SearchResults[] = [];
+        if (sourcesResponse.ok) {
+          sourcesLocal = await sourcesResponse.json();
+          setSources(sourcesLocal);
+        } else {
+          setSources([]);
+          console.error("Failed to fetch sources");
         }
+        setIsLoadingSources(false);
+
+        // Start similar questions generation in parallel (doesn't block answer)
+        void handleSimilarQuestions(question, sourcesLocal);
+
+        // Fetch answer with sources
+        const response = await fetch("/api/getAnswer", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ question, sources: sourcesLocal }),
+        });
+
+        if (!response.ok) {
+          throw new Error(`Answer generation failed: ${response.statusText}`);
+        }
+
+        // Handle the streaming response
+        const reader = response.body?.getReader();
+        if (!reader) {
+          throw new Error("No response body");
+        }
+
+        const decoder = new TextDecoder();
+        let done = false;
+        let accumulatedText = "";
+        let pendingText = "";
+        let animationFrameId: number | null = null;
+
+        const flushAnswerBuffer = () => {
+          if (!pendingText) {
+            return;
+          }
+
+          accumulatedText += pendingText;
+          pendingText = "";
+          setAnswer(accumulatedText);
+        };
+
+        const scheduleAnswerFlush = () => {
+          if (animationFrameId !== null) {
+            return;
+          }
+
+          animationFrameId = window.requestAnimationFrame(() => {
+            animationFrameId = null;
+            flushAnswerBuffer();
+          });
+        };
+
+        while (!done) {
+          const { value, done: doneReading } = await reader.read();
+          done = doneReading;
+
+          if (value) {
+            const chunk = decoder.decode(value, { stream: true });
+            if (chunk) {
+              pendingText += chunk;
+              scheduleAnswerFlush();
+            }
+          }
+        }
+
+        const remainingText = decoder.decode();
+        if (remainingText) {
+          pendingText += remainingText;
+        }
+
+        if (animationFrameId !== null) {
+          window.cancelAnimationFrame(animationFrameId);
+          animationFrameId = null;
+        }
+
+        flushAnswerBuffer();
+      } catch (error) {
+        console.error("Error in handleSourcesAndAnswer:", error);
+        setIsLoadingSources(false);
+        // Show error state to user
+        setAnswer('<p class="text-red-500">Sorry, an error occurred while generating your answer. Please try again.</p>');
       }
-    } catch (error) {
-      console.error('Error in handleSourcesAndAnswer:', error);
-      setIsLoadingSources(false);
-      // Show error state to user
-      setAnswer('<p class="text-red-500">Sorry, an error occurred while generating your answer. Please try again.</p>');
-    }
-  }
+    },
+    [handleSimilarQuestions],
+  );
 
-  async function handleSimilarQuestions(
-    question: string,
-    sources: SearchResults[],
-  ) {
-    let res = await fetch("/api/getSimilarQuestions", {
-      method: "POST",
-      body: JSON.stringify({ question, sources }),
-    });
-    let questions = await res.json();
-    setSimilarQuestions(questions);
-  }
+  const handleDisplayResult = useCallback(
+    async (newQuestion?: string) => {
+      const resolvedQuestion = newQuestion || promptValue;
 
-  const reset = () => {
+      setShowResult(true);
+      setLoading(true);
+      setQuestion(resolvedQuestion);
+      setPromptValue("");
+
+      await handleSourcesAndAnswer(resolvedQuestion);
+
+      setLoading(false);
+    },
+    [handleSourcesAndAnswer, promptValue],
+  );
+
+  const reset = useCallback(() => {
     setShowResult(false);
     setPromptValue("");
     setQuestion("");
     setAnswer("");
     setSources([]);
     setSimilarQuestions([]);
-  };
+  }, []);
 
   return (
     <>
