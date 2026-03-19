@@ -44,8 +44,8 @@ export default function Sources({ sources, isLoading }: SourcesProps) {
               ))}
             </>
           ) : sources.length > 0 ? (
-            sources.map((source) => (
-              <SourceCard source={source} key={source.url} />
+            sources.map((source, index) => (
+              <SourceCard source={source} key={source.url} index={index} />
             ))
           ) : (
             <div className="col-span-full text-center py-8">

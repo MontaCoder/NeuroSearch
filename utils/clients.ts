@@ -81,15 +81,10 @@ export function truncateContextForTokens(content: string, maxTokens: number = MA
 }
 
 export function buildTruncatedContext(sources: any[], maxTokens: number = MAX_TOKENS): string {
-  // Sort sources by content length (prefer longer, more detailed sources)
-  const sortedSources = [...sources].sort((a, b) => 
-    (b.content?.length || 0) - (a.content?.length || 0)
-  );
-  
   // Allocate tokens dynamically based on source quality
-  const totalContentLength = sortedSources.reduce((sum, s) => sum + (s.content?.length || 0), 0);
+  const totalContentLength = sources.reduce((sum, s) => sum + (s.content?.length || 0), 0);
   
-  return sortedSources.map((source, index) => {
+  return sources.map((source, index) => {
     const content = source.content || '';
     // Allocate proportionally, with minimum guarantee
     const allocatedTokens = Math.max(
