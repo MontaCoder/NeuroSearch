@@ -1,5 +1,5 @@
 import Image from "next/image";
-import { FC } from "react";
+import { FC, memo } from "react";
 import TypeAnimation from "./TypeAnimation";
 
 type TInputAreaProps = {
@@ -70,4 +70,4 @@ const InputArea: FC<TInputAreaProps> = ({
   );
 };
 
-export default InputArea;
+export default memo(InputArea);
