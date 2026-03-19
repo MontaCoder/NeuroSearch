@@ -68,6 +68,7 @@ Question: ${question}`,
           },
         ],
         temperature: 0.3, // Lower temperature for more factual answers
+        maxOutputTokens: 1024,
       });
     });
 
