@@ -1,4 +1,5 @@
 import Image from "next/image";
+import { memo } from "react";
 
 interface SimilarTopicsProps {
   similarQuestions: string[];
@@ -6,11 +7,11 @@ interface SimilarTopicsProps {
   reset: () => void;
 }
 
-const SimilarTopics = ({
+function SimilarTopics({
   similarQuestions,
   handleDisplayResult,
   reset,
-}: SimilarTopicsProps) => {
+}: SimilarTopicsProps) {
   return (
     <section
       className="container mx-auto px-4 py-8 max-w-4xl"
@@ -36,7 +37,7 @@ const SimilarTopics = ({
 
         <div className="space-y-1">
           {similarQuestions.length > 0 ? (
-            similarQuestions.map((item, index) => (
+            similarQuestions.map((item) => (
               <button
                 className="group flex w-full items-center gap-4 rounded-lg p-4 text-left transition-all duration-200 hover:bg-background-secondary focus:outline-none focus:ring-2 focus:ring-interactive-focus focus:ring-offset-2"
                 key={item}
@@ -73,6 +74,6 @@ const SimilarTopics = ({
       </div>
     </section>
   );
-};
+}
 
-export default SimilarTopics;
+export default memo(SimilarTopics);

@@ -1,5 +1,6 @@
 import Image from "next/image";
 import SourceCard from "./SourceCard";
+import { memo } from "react";
 import { SearchResults } from "@/utils/sharedTypes";
 
 interface SourcesProps {
@@ -7,7 +8,7 @@ interface SourcesProps {
   isLoading: boolean;
 }
 
-export default function Sources({ sources, isLoading }: SourcesProps) {
+function Sources({ sources, isLoading }: SourcesProps) {
   return (
     <section
       className="container mx-auto px-4 py-8 max-w-4xl"
@@ -59,3 +60,5 @@ export default function Sources({ sources, isLoading }: SourcesProps) {
     </section>
   );
 }
+
+export default memo(Sources);
