@@ -7,9 +7,12 @@ import Hero from "@/components/Hero";
 import InputArea from "@/components/InputArea";
 import SimilarTopics from "@/components/SimilarTopics";
 import Sources from "@/components/Sources";
-import Image from "next/image";
-import { useCallback, useState } from "react";
 import { SearchResults } from "@/utils/sharedTypes";
+import Image from "next/image";
+import { useCallback, useEffect, useRef, useState } from "react";
+
+const ANSWER_ERROR_MESSAGE =
+  '<p class="text-red-500">Sorry, an error occurred while generating your answer. Please try again.</p>';
 
 export default function Home() {
   const [promptValue, setPromptValue] = useState("");
@@ -20,16 +23,46 @@ export default function Home() {
   const [answer, setAnswer] = useState("");
   const [similarQuestions, setSimilarQuestions] = useState<string[]>([]);
   const [loading, setLoading] = useState(false);
+  const [isRegenerating, setIsRegenerating] = useState(false);
+  const hasAutoSearchedFromUrl = useRef(false);
 
-  const handleSimilarQuestions = useCallback(
-    async (question: string, sources: SearchResults[]) => {
+  const updateSearchUrl = useCallback((nextQuestion?: string) => {
+    if (typeof window === "undefined") {
+      return;
+    }
+
+    const url = new URL(window.location.href);
+    const trimmedQuestion = nextQuestion?.trim();
+
+    if (trimmedQuestion) {
+      url.searchParams.set("q", trimmedQuestion);
+    } else {
+      url.searchParams.delete("q");
+    }
+
+    window.history.replaceState(
+      {},
+      "",
+      `${url.pathname}${url.search}${url.hash}`,
+    );
+  }, []);
+
+  const fetchSimilarQuestions = useCallback(
+    async (nextQuestion: string, nextSources: SearchResults[]) => {
       try {
-        const res = await fetch("/api/getSimilarQuestions", {
+        const response = await fetch("/api/getSimilarQuestions", {
           method: "POST",
-          body: JSON.stringify({ question, sources }),
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            question: nextQuestion,
+            sources: nextSources,
+          }),
         });
-        const questions = await res.json();
-        setSimilarQuestions(questions);
+
+        const questions = await response.json();
+        setSimilarQuestions(Array.isArray(questions) ? questions : []);
       } catch (error) {
         console.error("Error generating similar questions:", error);
         setSimilarQuestions([]);
@@ -38,45 +71,56 @@ export default function Home() {
     [],
   );
 
-  const handleSourcesAndAnswer = useCallback(
-    async (question: string) => {
-      setIsLoadingSources(true);
+  const fetchSources = useCallback(async (nextQuestion: string) => {
+    setIsLoadingSources(true);
 
+    try {
+      const response = await fetch("/api/getSources", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ question: nextQuestion }),
+      });
+
+      if (!response.ok) {
+        setSources([]);
+        console.error("Failed to fetch sources");
+        return [];
+      }
+
+      const nextSources: SearchResults[] = await response.json();
+      setSources(nextSources);
+      return nextSources;
+    } catch (error) {
+      console.error("Error fetching sources:", error);
+      setSources([]);
+      return [];
+    } finally {
+      setIsLoadingSources(false);
+    }
+  }, []);
+
+  const streamAnswer = useCallback(
+    async (nextQuestion: string, nextSources: SearchResults[]) => {
       try {
-        // Fetch sources first (needed for both answer and similar questions)
-        const sourcesResponse = await fetch("/api/getSources", {
-          method: "POST",
-          body: JSON.stringify({ question }),
-        });
-
-        let sourcesLocal: SearchResults[] = [];
-        if (sourcesResponse.ok) {
-          sourcesLocal = await sourcesResponse.json();
-          setSources(sourcesLocal);
-        } else {
-          setSources([]);
-          console.error("Failed to fetch sources");
-        }
-        setIsLoadingSources(false);
-
-        // Start similar questions generation in parallel (doesn't block answer)
-        void handleSimilarQuestions(question, sourcesLocal);
-
-        // Fetch answer with sources
         const response = await fetch("/api/getAnswer", {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
           },
-          body: JSON.stringify({ question, sources: sourcesLocal }),
+          body: JSON.stringify({
+            question: nextQuestion,
+            sources: nextSources,
+          }),
         });
 
         if (!response.ok) {
           throw new Error(`Answer generation failed: ${response.statusText}`);
         }
 
-        // Handle the streaming response
         const reader = response.body?.getReader();
+
         if (!reader) {
           throw new Error("No response body");
         }
@@ -114,6 +158,7 @@ export default function Home() {
 
           if (value) {
             const chunk = decoder.decode(value, { stream: true });
+
             if (chunk) {
               pendingText += chunk;
               scheduleAnswerFlush();
@@ -122,6 +167,7 @@ export default function Home() {
         }
 
         const remainingText = decoder.decode();
+
         if (remainingText) {
           pendingText += remainingText;
         }
@@ -133,39 +179,115 @@ export default function Home() {
 
         flushAnswerBuffer();
       } catch (error) {
-        console.error("Error in handleSourcesAndAnswer:", error);
-        setIsLoadingSources(false);
-        // Show error state to user
-        setAnswer('<p class="text-red-500">Sorry, an error occurred while generating your answer. Please try again.</p>');
+        console.error("Error streaming answer:", error);
+        setAnswer(ANSWER_ERROR_MESSAGE);
       }
     },
-    [handleSimilarQuestions],
+    [],
   );
 
-  const handleDisplayResult = useCallback(
-    async (newQuestion?: string) => {
-      const resolvedQuestion = newQuestion || promptValue;
+  const runSearch = useCallback(
+    async (nextQuestion: string) => {
+      const resolvedQuestion = nextQuestion.trim();
+
+      if (!resolvedQuestion) {
+        return;
+      }
 
       setShowResult(true);
       setLoading(true);
       setQuestion(resolvedQuestion);
       setPromptValue("");
+      setAnswer("");
+      setSimilarQuestions([]);
+      updateSearchUrl(resolvedQuestion);
 
-      await handleSourcesAndAnswer(resolvedQuestion);
-
-      setLoading(false);
+      try {
+        const nextSources = await fetchSources(resolvedQuestion);
+        void fetchSimilarQuestions(resolvedQuestion, nextSources);
+        await streamAnswer(resolvedQuestion, nextSources);
+      } finally {
+        setLoading(false);
+      }
     },
-    [handleSourcesAndAnswer, promptValue],
+    [fetchSimilarQuestions, fetchSources, streamAnswer, updateSearchUrl],
   );
 
+  const handleDisplayResult = useCallback(
+    async (newQuestion?: string) => {
+      const resolvedQuestion = (newQuestion || promptValue).trim();
+
+      if (!resolvedQuestion) {
+        return;
+      }
+
+      await runSearch(resolvedQuestion);
+    },
+    [promptValue, runSearch],
+  );
+
+  const regenerateAnswer = useCallback(async () => {
+    const activeQuestion = question.trim();
+
+    if (!activeQuestion) {
+      return;
+    }
+
+    setIsRegenerating(true);
+    setAnswer("");
+    updateSearchUrl(activeQuestion);
+
+    try {
+      const nextSources =
+        sources.length > 0 ? sources : await fetchSources(activeQuestion);
+
+      if (sources.length === 0 && nextSources.length > 0) {
+        void fetchSimilarQuestions(activeQuestion, nextSources);
+      }
+
+      await streamAnswer(activeQuestion, nextSources);
+    } finally {
+      setIsRegenerating(false);
+    }
+  }, [
+    fetchSimilarQuestions,
+    fetchSources,
+    question,
+    sources,
+    streamAnswer,
+    updateSearchUrl,
+  ]);
+
   const reset = useCallback(() => {
+    updateSearchUrl();
     setShowResult(false);
     setPromptValue("");
     setQuestion("");
     setAnswer("");
     setSources([]);
     setSimilarQuestions([]);
-  }, []);
+    setIsLoadingSources(false);
+    setLoading(false);
+    setIsRegenerating(false);
+  }, [updateSearchUrl]);
+
+  useEffect(() => {
+    if (hasAutoSearchedFromUrl.current) {
+      return;
+    }
+
+    hasAutoSearchedFromUrl.current = true;
+
+    const initialQuestion = new URLSearchParams(window.location.search)
+      .get("q")
+      ?.trim();
+
+    if (initialQuestion) {
+      void runSearch(initialQuestion);
+    }
+  }, [runSearch]);
+
+  const isBusy = loading || isRegenerating;
 
   return (
     <>
@@ -181,9 +303,8 @@ export default function Home() {
 
         {showResult && (
           <div className="flex min-h-[calc(100vh-8rem)] flex-col">
-            {/* Question display */}
             <section className="border-b border-border-light bg-background-secondary py-6">
-              <div className="container mx-auto px-4 max-w-4xl">
+              <div className="container mx-auto max-w-4xl px-4">
                 <div className="flex items-start gap-4">
                   <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-background-primary shadow-sm">
                     <Image
@@ -196,10 +317,10 @@ export default function Home() {
                     />
                   </div>
                   <div className="flex-1">
-                    <h2 className="text-lg font-semibold text-text-primary uppercase tracking-wide mb-2">
+                    <h2 className="mb-2 text-lg font-semibold uppercase tracking-wide text-text-primary">
                       Question
                     </h2>
-                    <p className="text-base text-text-secondary leading-relaxed">
+                    <p className="text-base leading-relaxed text-text-secondary">
                       &quot;{question}&quot;
                     </p>
                   </div>
@@ -207,11 +328,16 @@ export default function Home() {
               </div>
             </section>
 
-            {/* Results sections */}
             <div className="flex-1 py-8">
-              <div className="container mx-auto px-4 max-w-4xl space-y-8">
+              <div className="container mx-auto max-w-4xl space-y-8 px-4">
                 <Sources sources={sources} isLoading={isLoadingSources} />
-                <Answer answer={answer} sourceCount={sources.length} />
+                <Answer
+                  answer={answer}
+                  question={question}
+                  sourceCount={sources.length}
+                  onRegenerate={regenerateAnswer}
+                  isRegenerating={isRegenerating}
+                />
                 <SimilarTopics
                   similarQuestions={similarQuestions}
                   handleDisplayResult={handleDisplayResult}
@@ -220,14 +346,13 @@ export default function Home() {
               </div>
             </div>
 
-            {/* Input area */}
             <div className="border-t border-border-light bg-background-primary py-6">
-              <div className="container mx-auto px-4 max-w-2xl">
+              <div className="container mx-auto max-w-2xl px-4">
                 <InputArea
                   promptValue={promptValue}
                   setPromptValue={setPromptValue}
                   handleDisplayResult={handleDisplayResult}
-                  disabled={loading}
+                  disabled={isBusy}
                   reset={reset}
                 />
               </div>
