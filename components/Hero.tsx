@@ -1,28 +1,21 @@
 import Image from "next/image";
-import { FC } from "react";
 import InputArea from "./InputArea";
 
-type THeroProps = {
+interface HeroProps {
   promptValue: string;
   setPromptValue: React.Dispatch<React.SetStateAction<string>>;
   handleDisplayResult: () => void;
-};
+}
 
-const Hero: FC<THeroProps> = ({
-  promptValue,
-  setPromptValue,
-  handleDisplayResult,
-}) => {
-  const handleClickSuggestion = (value: string) => {
-    setPromptValue(value);
-  };
+const SUGGESTIONS = [
+  { id: 1, name: "How does photosynthesis work?", icon: "/img/icon _leaf_.svg" },
+  { id: 2, name: "How can I get a 6 pack in 3 months?", icon: "/img/icon _dumbell_.svg" },
+  { id: 3, name: "Can you explain the theory of relativity?", icon: "/img/icon _atom_.svg" },
+] as const;
 
+export default function Hero({ promptValue, setPromptValue, handleDisplayResult }: HeroProps) {
   return (
-    <section
-      className="flex flex-col items-center justify-center min-h-screen px-4 py-16 md:px-8 md:py-24 lg:px-16 lg:py-32"
-      aria-label="Search interface"
-    >
-      {/* Powered by badge */}
+    <section className="flex flex-col items-center justify-center min-h-screen px-4 py-16 md:px-8 md:py-24 lg:px-16 lg:py-32" aria-label="Search interface">
       <a
         className="mb-6 inline-flex h-10 shrink-0 items-center gap-2 rounded-full border border-border-medium bg-background-primary px-4 py-2 shadow-sm hover:shadow-md transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-interactive-focus focus:ring-offset-2"
         href="https://console.groq.com/"
@@ -31,19 +24,16 @@ const Hero: FC<THeroProps> = ({
         aria-label="Powered by Groq and OpenAI - Opens in new tab"
       >
         <span className="text-sm font-medium text-text-secondary">
-          Powered by{" "}
-          <span className="text-text-primary font-semibold">Groq</span>{" "}
+          Powered by <span className="text-text-primary font-semibold">Groq</span>{" "}
           <span className="text-text-tertiary">and OpenAI gpt-oss</span>
         </span>
       </a>
 
-      {/* Main heading */}
       <h1 className="mb-8 text-center text-4xl font-semibold leading-tight tracking-tight md:text-5xl lg:text-6xl lg:text-7xl">
         <span className="block">Search smarter</span>
         <span className="block gradient-text">& faster</span>
       </h1>
 
-      {/* Search input section */}
       <div className="w-full max-w-2xl mb-12">
         <InputArea
           promptValue={promptValue}
@@ -52,31 +42,21 @@ const Hero: FC<THeroProps> = ({
         />
       </div>
 
-      {/* Suggestions section */}
       <div className="flex flex-wrap items-center justify-center gap-3 mb-12 lg:flex-nowrap lg:justify-center">
-        {suggestions.map((item, index) => (
+        {SUGGESTIONS.map((item) => (
           <button
             className="group flex h-12 items-center justify-center gap-2 rounded-lg border border-border-medium bg-background-primary px-4 py-3 text-sm font-medium text-text-secondary hover:bg-background-secondary hover:border-border-dark hover:text-text-primary transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-interactive-focus focus:ring-offset-2 active:scale-95"
-            onClick={() => handleClickSuggestion(item.name)}
+            onClick={() => setPromptValue(item.name)}
             key={item.id}
             aria-label={`Try searching: ${item.name}`}
             type="button"
           >
-            <Image
-              unoptimized
-              src={item.icon}
-              alt=""
-              width={18}
-              height={16}
-              className="w-4 h-4 opacity-60 group-hover:opacity-100 transition-opacity duration-200"
-              aria-hidden="true"
-            />
+            <Image unoptimized src={item.icon} alt="" width={18} height={16} className="w-4 h-4 opacity-60 group-hover:opacity-100 transition-opacity duration-200" aria-hidden="true" />
             <span className="leading-none">{item.name}</span>
           </button>
         ))}
       </div>
 
-      {/* GitHub link section */}
       <div className="text-center">
         <p className="text-sm font-medium text-text-tertiary">
           Fully open source!{" "}
@@ -93,30 +73,4 @@ const Hero: FC<THeroProps> = ({
       </div>
     </section>
   );
-};
-
-type suggestionType = {
-  id: number;
-  name: string;
-  icon: string;
-};
-
-const suggestions: suggestionType[] = [
-  {
-    id: 1,
-    name: "How does photosynthesis work?",
-    icon: "/img/icon _leaf_.svg",
-  },
-  {
-    id: 2,
-    name: "How can I get a 6 pack in 3 months?",
-    icon: "/img/icon _dumbell_.svg",
-  },
-  {
-    id: 3,
-    name: "Can you explain the theory of relativity?",
-    icon: "/img/icon _atom_.svg",
-  },
-];
-
-export default Hero;
+}
