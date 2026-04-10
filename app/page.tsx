@@ -11,8 +11,40 @@ import { SearchResults } from "@/utils/sharedTypes";
 import Image from "next/image";
 import { useCallback, useEffect, useRef, useState } from "react";
 
-const ANSWER_ERROR_MESSAGE =
-  '<p class="text-red-500">Sorry, an error occurred while generating your answer. Please try again.</p>';
+async function fetchSources(question: string): Promise<SearchResults[]> {
+  const response = await fetch("/api/getSources", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ question }),
+  });
+  return response.ok ? response.json() : [];
+}
+
+async function streamAnswer(question: string, sources: SearchResults[], setAnswer: (a: string) => void) {
+  const response = await fetch("/api/getAnswer", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ question, sources }),
+  });
+
+  if (!response.ok || !response.body) throw new Error("Answer generation failed");
+
+  const reader = response.body.getReader();
+  const decoder = new TextDecoder();
+  let accumulated = "";
+
+  while (true) {
+    const { value, done } = await reader.read();
+    if (done) break;
+    if (value) {
+      accumulated += decoder.decode(value, { stream: true });
+      setAnswer(accumulated);
+    }
+  }
+
+  const remaining = decoder.decode();
+  if (remaining) setAnswer(accumulated + remaining);
+}
 
 export default function Home() {
   const [promptValue, setPromptValue] = useState("");
@@ -26,237 +58,74 @@ export default function Home() {
   const [isRegenerating, setIsRegenerating] = useState(false);
   const hasAutoSearchedFromUrl = useRef(false);
 
-  const updateSearchUrl = useCallback((nextQuestion?: string) => {
-    if (typeof window === "undefined") {
-      return;
-    }
-
+  const updateSearchUrl = (q?: string) => {
+    if (typeof window === "undefined") return;
     const url = new URL(window.location.href);
-    const trimmedQuestion = nextQuestion?.trim();
-
-    if (trimmedQuestion) {
-      url.searchParams.set("q", trimmedQuestion);
-    } else {
-      url.searchParams.delete("q");
-    }
-
-    window.history.replaceState(
-      {},
-      "",
-      `${url.pathname}${url.search}${url.hash}`,
-    );
-  }, []);
-
-  const fetchSimilarQuestions = useCallback(
-    async (nextQuestion: string, nextSources: SearchResults[]) => {
-      try {
-        const response = await fetch("/api/getSimilarQuestions", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            question: nextQuestion,
-            sources: nextSources,
-          }),
-        });
-
-        const questions = await response.json();
-        setSimilarQuestions(Array.isArray(questions) ? questions : []);
-      } catch (error) {
-        console.error("Error generating similar questions:", error);
-        setSimilarQuestions([]);
-      }
-    },
-    [],
-  );
-
-  const fetchSources = useCallback(async (nextQuestion: string) => {
-    setIsLoadingSources(true);
-
-    try {
-      const response = await fetch("/api/getSources", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ question: nextQuestion }),
-      });
-
-      if (!response.ok) {
-        setSources([]);
-        console.error("Failed to fetch sources");
-        return [];
-      }
-
-      const nextSources: SearchResults[] = await response.json();
-      setSources(nextSources);
-      return nextSources;
-    } catch (error) {
-      console.error("Error fetching sources:", error);
-      setSources([]);
-      return [];
-    } finally {
-      setIsLoadingSources(false);
-    }
-  }, []);
-
-  const streamAnswer = useCallback(
-    async (nextQuestion: string, nextSources: SearchResults[]) => {
-      try {
-        const response = await fetch("/api/getAnswer", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            question: nextQuestion,
-            sources: nextSources,
-          }),
-        });
-
-        if (!response.ok) {
-          throw new Error(`Answer generation failed: ${response.statusText}`);
-        }
-
-        const reader = response.body?.getReader();
-
-        if (!reader) {
-          throw new Error("No response body");
-        }
-
-        const decoder = new TextDecoder();
-        let done = false;
-        let accumulatedText = "";
-        let pendingText = "";
-        let animationFrameId: number | null = null;
-
-        const flushAnswerBuffer = () => {
-          if (!pendingText) {
-            return;
-          }
-
-          accumulatedText += pendingText;
-          pendingText = "";
-          setAnswer(accumulatedText);
-        };
-
-        const scheduleAnswerFlush = () => {
-          if (animationFrameId !== null) {
-            return;
-          }
-
-          animationFrameId = window.requestAnimationFrame(() => {
-            animationFrameId = null;
-            flushAnswerBuffer();
-          });
-        };
-
-        while (!done) {
-          const { value, done: doneReading } = await reader.read();
-          done = doneReading;
-
-          if (value) {
-            const chunk = decoder.decode(value, { stream: true });
-
-            if (chunk) {
-              pendingText += chunk;
-              scheduleAnswerFlush();
-            }
-          }
-        }
-
-        const remainingText = decoder.decode();
-
-        if (remainingText) {
-          pendingText += remainingText;
-        }
-
-        if (animationFrameId !== null) {
-          window.cancelAnimationFrame(animationFrameId);
-          animationFrameId = null;
-        }
-
-        flushAnswerBuffer();
-      } catch (error) {
-        console.error("Error streaming answer:", error);
-        setAnswer(ANSWER_ERROR_MESSAGE);
-      }
-    },
-    [],
-  );
+    q?.trim() ? url.searchParams.set("q", q.trim()) : url.searchParams.delete("q");
+    window.history.replaceState({}, "", `${url.pathname}${url.search}${url.hash}`);
+  };
 
   const runSearch = useCallback(
     async (nextQuestion: string) => {
-      const resolvedQuestion = nextQuestion.trim();
-
-      if (!resolvedQuestion) {
-        return;
-      }
+      const resolved = nextQuestion.trim();
+      if (!resolved) return;
 
       setShowResult(true);
       setLoading(true);
-      setQuestion(resolvedQuestion);
+      setQuestion(resolved);
       setPromptValue("");
       setAnswer("");
       setSimilarQuestions([]);
-      updateSearchUrl(resolvedQuestion);
+      updateSearchUrl(resolved);
 
       try {
-        const nextSources = await fetchSources(resolvedQuestion);
-        void fetchSimilarQuestions(resolvedQuestion, nextSources);
-        await streamAnswer(resolvedQuestion, nextSources);
+        setIsLoadingSources(true);
+        const nextSources = await fetchSources(resolved);
+        setIsLoadingSources(false);
+        setSources(nextSources);
+
+        // Run these in parallel
+        fetch("/api/getSimilarQuestions", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ question: resolved, sources: nextSources }),
+        })
+          .then((r) => r.json())
+          .then((q) => setSimilarQuestions(Array.isArray(q) ? q : []))
+          .catch(() => setSimilarQuestions([]));
+
+        await streamAnswer(resolved, nextSources, setAnswer);
       } finally {
         setLoading(false);
       }
     },
-    [fetchSimilarQuestions, fetchSources, streamAnswer, updateSearchUrl],
+    [],
   );
 
-  const handleDisplayResult = useCallback(
-    async (newQuestion?: string) => {
-      const resolvedQuestion = (newQuestion || promptValue).trim();
-
-      if (!resolvedQuestion) {
-        return;
-      }
-
-      await runSearch(resolvedQuestion);
-    },
-    [promptValue, runSearch],
-  );
+  const handleDisplayResult = async (newQuestion?: string) => {
+    const resolved = (newQuestion || promptValue).trim();
+    if (resolved) await runSearch(resolved);
+  };
 
   const regenerateAnswer = useCallback(async () => {
-    const activeQuestion = question.trim();
-
-    if (!activeQuestion) {
-      return;
-    }
+    if (!question.trim()) return;
 
     setIsRegenerating(true);
     setAnswer("");
-    updateSearchUrl(activeQuestion);
+    updateSearchUrl(question);
 
     try {
-      const nextSources =
-        sources.length > 0 ? sources : await fetchSources(activeQuestion);
-
+      const nextSources = sources.length > 0 ? sources : await fetchSources(question);
       if (sources.length === 0 && nextSources.length > 0) {
-        void fetchSimilarQuestions(activeQuestion, nextSources);
+        setSources(nextSources);
       }
-
-      await streamAnswer(activeQuestion, nextSources);
+      await streamAnswer(question, nextSources, setAnswer);
+    } catch {
+      setAnswer('<p class="text-red-500">Sorry, an error occurred while generating your answer. Please try again.</p>');
     } finally {
       setIsRegenerating(false);
     }
-  }, [
-    fetchSimilarQuestions,
-    fetchSources,
-    question,
-    sources,
-    streamAnswer,
-    updateSearchUrl,
-  ]);
+  }, [question, sources]);
 
   const reset = useCallback(() => {
     updateSearchUrl();
@@ -269,22 +138,14 @@ export default function Home() {
     setIsLoadingSources(false);
     setLoading(false);
     setIsRegenerating(false);
-  }, [updateSearchUrl]);
+  }, []);
 
   useEffect(() => {
-    if (hasAutoSearchedFromUrl.current) {
-      return;
-    }
-
+    if (hasAutoSearchedFromUrl.current) return;
     hasAutoSearchedFromUrl.current = true;
 
-    const initialQuestion = new URLSearchParams(window.location.search)
-      .get("q")
-      ?.trim();
-
-    if (initialQuestion) {
-      void runSearch(initialQuestion);
-    }
+    const initialQuestion = new URLSearchParams(window.location.search).get("q")?.trim();
+    if (initialQuestion) void runSearch(initialQuestion);
   }, [runSearch]);
 
   const isBusy = loading || isRegenerating;
