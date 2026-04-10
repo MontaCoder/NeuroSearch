@@ -152,127 +152,22 @@
 }
 
 @layer components {
-  /* Button styles */
-  .btn {
-    @apply inline-flex items-center justify-center rounded-lg px-4 py-2 font-medium transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-interactive-focus focus:ring-offset-2 focus:ring-offset-background-primary disabled:opacity-50 disabled:pointer-events-none;
-  }
-
-  .btn-primary {
-    @apply btn bg-text-primary text-background-primary hover:bg-text-secondary hover:shadow-md active:scale-95;
-  }
-
-  .btn-secondary {
-    @apply btn bg-background-secondary text-text-primary border border-border-medium hover:bg-background-tertiary hover:border-border-dark active:scale-95;
-  }
-
-  .btn-ghost {
-    @apply btn text-text-primary hover:bg-background-secondary active:scale-95;
-  }
-
-  /* Card styles */
-  .card {
-    @apply bg-background-primary rounded-lg border border-border-light shadow-sm hover:shadow-md transition-shadow duration-200;
-  }
-
-  .card-elevated {
-    @apply bg-background-primary rounded-lg border border-border-light shadow-lg hover:shadow-xl transition-shadow duration-200;
-  }
-
-  /* Input styles */
-  .input {
-    @apply bg-background-primary border border-border-medium rounded-lg px-4 py-3 text-text-primary placeholder-text-tertiary focus:outline-none focus:ring-2 focus:ring-interactive-focus focus:border-transparent transition-all duration-200;
-  }
-
-  /* Badge styles */
-  .badge {
-    @apply inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium;
-  }
-
-  .badge-secondary {
-    @apply badge bg-background-secondary text-text-secondary border border-border-light;
-  }
-
   /* Loading spinner */
   .spinner {
     @apply animate-spin rounded-full border-2 border-interactive-disabled border-t-interactive-focus;
   }
 
-  /* Tooltip */
-  .tooltip {
-    @apply relative inline-block;
+  /* Card texture */
+  .card-elevated {
+    @apply bg-background-primary rounded-lg border border-border-light shadow-lg hover:shadow-xl transition-shadow duration-200;
   }
 
-  .tooltip::after {
-    @apply absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-2 py-1 bg-text-primary text-background-primary text-xs rounded opacity-0 pointer-events-none transition-opacity duration-200 whitespace-nowrap z-50;
-    content: attr(data-tooltip);
-  }
-
-  .tooltip:hover::after {
-    @apply opacity-100;
-  }
-
-  /* Modal backdrop */
-  .modal-backdrop {
-    @apply fixed inset-0 bg-black bg-opacity-50 z-40 transition-opacity duration-200;
-  }
-
-  /* Navigation styles */
-  .nav-link {
-    @apply text-text-secondary hover:text-text-primary transition-colors duration-200 relative;
-  }
-
-  .nav-link::after {
-    @apply absolute bottom-0 left-0 w-0 h-0.5 bg-text-primary transition-all duration-200;
-    content: '';
-  }
-
-  .nav-link:hover::after,
-  .nav-link:focus::after {
-    @apply w-full;
-  }
-}
-
-@layer utilities {
-  .text-balance {
-    text-wrap: balance;
-  }
-
-  /* Hide scrollbar for Chrome, Safari and Opera */
-  .no-scrollbar::-webkit-scrollbar {
-    display: none;
-  }
-
-  /* Hide scrollbar for IE, Edge and Firefox */
-  .no-scrollbar {
-    -ms-overflow-style: none; /* IE and Edge */
-    scrollbar-width: none; /* Firefox */
-  }
-
-  /* Glass effect */
-  .glass {
-    @apply bg-background-primary bg-opacity-80 backdrop-blur-sm border border-border-light;
-  }
-
-  /* Enhanced texture for cards */
   .card-texture {
     background-image:
       radial-gradient(circle at 1px 1px, rgba(23, 23, 23, 0.08) 1px, transparent 0),
       radial-gradient(circle at 31px 31px, rgba(23, 23, 23, 0.04) 1px, transparent 0);
     background-size: 30px 30px, 60px 60px;
     background-position: 0 0, 15px 15px;
-  }
-
-  /* Subtle paper texture */
-  .paper-texture {
-    background-image:
-      radial-gradient(circle at 50% 50%, transparent 30%, rgba(23, 23, 23, 0.015) 31%, rgba(23, 23, 23, 0.015) 32%, transparent 33%),
-      linear-gradient(45deg, transparent 40%, rgba(23, 23, 23, 0.01) 41%, rgba(23, 23, 23, 0.01) 42%, transparent 43%);
-    background-size: 80px 80px, 40px 40px;
-  }
-
-  /* Gradient text */
-  .gradient-text {
-    @apply bg-gradient-to-r from-text-primary to-text-secondary bg-clip-text text-transparent;
   }
 
   /* Loading animation */
@@ -291,6 +186,28 @@
   .loader span:nth-child(3) {
     animation-delay: 0.4s;
   }
+}
+
+@layer utilities {
+  .text-balance {
+    text-wrap: balance;
+  }
+
+  /* Gradient text */
+  .gradient-text {
+    @apply bg-gradient-to-r from-text-primary to-text-secondary bg-clip-text text-transparent;
+  }
+
+  /* Hide scrollbar for Chrome, Safari and Opera */
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+
+  /* Hide scrollbar for IE, Edge and Firefox */
+  .no-scrollbar {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
 
   /* Skeleton loading */
   .skeleton {
@@ -300,34 +217,5 @@
   /* Text selection */
   ::selection {
     @apply bg-interactive-hover text-text-primary;
-  }
-
-  /* Smooth transitions for interactive elements */
-  .interactive {
-    @apply transition-all duration-200 ease-out;
-  }
-
-  .interactive:hover {
-    @apply transform scale-105;
-  }
-
-  .interactive:active {
-    @apply transform scale-95;
-  }
-
-  /* Focus trap for modals */
-  .focus-trap {
-    @apply focus:outline-none focus:ring-2 focus:ring-interactive-focus focus:ring-offset-2;
-  }
-
-  /* High contrast mode support */
-  @media (prefers-contrast: high) {
-    .card {
-      @apply border-border-dark;
-    }
-
-    .btn-secondary {
-      @apply border-border-dark;
-    }
   }
 }
