@@ -1,5 +1,5 @@
 import { streamText } from 'ai';
-import { SearchResults } from "@/utils/sharedTypes";
+import { SearchResults, normalizeReasoningEffort } from "@/utils/sharedTypes";
 import { groqClientAISDK, buildTruncatedContext, withRetry } from '@/utils/clients';
 
 export const maxDuration = 45;
@@ -40,16 +40,18 @@ function badRequest(message: string) {
 
 export async function POST(request: Request) {
   try {
-    const { question, sources } = await request.json();
+    const { question, sources, reasoningEffort } = await request.json();
 
     if (!question || typeof question !== 'string') return badRequest('Invalid question format');
     if (!sources || !Array.isArray(sources)) return badRequest('Invalid sources format');
 
     const finalResults: SearchResults[] = sources.slice(0, 5);
     const today = new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
+    const effort = normalizeReasoningEffort(reasoningEffort);
 
     const result = await withRetry(async () => streamText({
       model: groqClientAISDK("openai/gpt-oss-120b"),
+      providerOptions: { groq: { reasoningEffort: effort } },
       system: SYSTEM_PROMPT,
       messages: [{
         role: 'user',
