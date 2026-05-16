@@ -1,10 +1,17 @@
 import Image from "next/image";
+import DeepThinkToggle from "./DeepThinkToggle";
 import InputArea from "./InputArea";
+import ReasoningEffortSelector from "./ReasoningEffortSelector";
+import { ReasoningEffort } from "@/utils/sharedTypes";
 
 interface HeroProps {
   promptValue: string;
   setPromptValue: React.Dispatch<React.SetStateAction<string>>;
   handleDisplayResult: () => void;
+  deepThink?: boolean;
+  onToggleDeepThink?: () => void;
+  reasoningEffort?: ReasoningEffort;
+  onChangeReasoningEffort?: (next: ReasoningEffort) => void;
 }
 
 const SUGGESTIONS = [
@@ -13,7 +20,15 @@ const SUGGESTIONS = [
   { id: 3, name: "Can you explain the theory of relativity?", icon: "/img/icon _atom_.svg" },
 ] as const;
 
-export default function Hero({ promptValue, setPromptValue, handleDisplayResult }: HeroProps) {
+export default function Hero({
+  promptValue,
+  setPromptValue,
+  handleDisplayResult,
+  deepThink,
+  onToggleDeepThink,
+  reasoningEffort,
+  onChangeReasoningEffort,
+}: HeroProps) {
   return (
     <section className="flex flex-col items-center justify-center min-h-screen px-4 py-16 md:px-8 md:py-24 lg:px-16 lg:py-32" aria-label="Search interface">
       <a
@@ -34,13 +49,27 @@ export default function Hero({ promptValue, setPromptValue, handleDisplayResult 
         <span className="block gradient-text">& faster</span>
       </h1>
 
-      <div className="w-full max-w-2xl mb-12">
+      <div className="w-full max-w-2xl mb-6">
         <InputArea
           promptValue={promptValue}
           setPromptValue={setPromptValue}
           handleDisplayResult={handleDisplayResult}
         />
       </div>
+
+      {(onToggleDeepThink || onChangeReasoningEffort) && (
+        <div className="mb-10 flex flex-wrap items-center justify-center gap-2">
+          {onToggleDeepThink && (
+            <DeepThinkToggle enabled={!!deepThink} onToggle={onToggleDeepThink} />
+          )}
+          {onChangeReasoningEffort && reasoningEffort && (
+            <ReasoningEffortSelector
+              value={reasoningEffort}
+              onChange={onChangeReasoningEffort}
+            />
+          )}
+        </div>
+      )}
 
       <div className="flex flex-wrap items-center justify-center gap-3 mb-12 lg:flex-nowrap lg:justify-center">
         {SUGGESTIONS.map((item) => (
